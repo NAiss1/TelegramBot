@@ -5,436 +5,214 @@
   <title>Reminder App</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <style>
-    :root {
-      --bg: #020617;
-      --card-bg: rgba(15, 23, 42, 0.92);
-      --border: rgba(148, 163, 184, 0.15);
-      --accent: #6366f1;
-      --accent-soft: rgba(99, 102, 241, 0.12);
-      --text-main: #e5e7eb;
-      --text-muted: #9ca3af;
-      --error: #f97373;
-      --pill-bg: rgba(15, 23, 42, 0.9);
-    }
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap" rel="stylesheet">
 
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      margin: 0;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: radial-gradient(circle at top, #1d2538 0, #020617 55%, #000 100%);
-      color: var(--text-main);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      padding: 16px;
-    }
-
-    .card {
-      width: 100%;
-      max-width: 440px;
-      background: var(--card-bg);
-      border-radius: 22px;
-      padding: 18px 18px 20px;
-      border: 1px solid var(--border);
-      box-shadow:
-        0 24px 60px rgba(15, 23, 42, 0.85),
-        0 0 0 1px rgba(15, 23, 42, 0.6);
-      backdrop-filter: blur(18px);
-    }
-
-    .header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 10px;
-    }
-
-    .title-block {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-
-    .title {
-      font-size: 19px;
-      font-weight: 600;
-    }
-
-    .subtitle {
-      font-size: 13px;
-      color: var(--text-muted);
-    }
-
-    .pill {
-      font-size: 11px;
-      padding: 5px 9px;
-      border-radius: 999px;
-      background: var(--pill-bg);
-      border: 1px solid rgba(148, 163, 184, 0.28);
-      color: var(--text-muted);
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .pill-dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 999px;
-      background: #22c55e;
-      box-shadow: 0 0 0 5px rgba(34, 197, 94, 0.15);
-    }
-
-    label {
-      display: block;
-      font-size: 13px;
-      margin-bottom: 6px;
-      color: var(--text-main);
-    }
-
-    input, select {
-      width: 100%;
-      padding: 10px 12px;
-      border-radius: 11px;
-      border: 1px solid var(--border);
-      background: rgba(2, 6, 23, 0.9);
-      color: var(--text-main);
-      font-size: 14px;
-      outline: none;
-      margin-bottom: 14px;
-      transition: border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
-    }
-
-    input:focus, select:focus {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.4);
-      background: rgba(2, 6, 23, 1);
-    }
-
-    .row {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 4px;
-    }
-
-    .row > div {
-      flex: 1;
-    }
-
-    .chips {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      margin-bottom: 10px;
-    }
-
-    .chip {
-      font-size: 11px;
-      padding: 6px 8px;
-      border-radius: 999px;
-      border: 1px solid rgba(148, 163, 184, 0.25);
-      background: rgba(15, 23, 42, 0.9);
-      color: var(--text-muted);
-      cursor: pointer;
-      user-select: none;
-      transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
-    }
-
-    .chip:hover {
-      border-color: var(--accent);
-      color: var(--text-main);
-    }
-
-    .chip-primary {
-      border-color: rgba(99, 102, 241, 0.5);
-      background: var(--accent-soft);
-      color: var(--text-main);
-    }
-
-    .error {
-      font-size: 11px;
-      color: var(--error);
-      margin-top: -4px;
-      margin-bottom: 6px;
-      min-height: 14px;
-    }
-
-    .hint {
-      font-size: 11px;
-      color: var(--text-muted);
-      margin-top: 4px;
-    }
-
-    .divider {
-      margin: 10px 0 8px;
-      height: 1px;
-      background: linear-gradient(
-        to right,
-        transparent,
-        rgba(148, 163, 184, 0.45),
-        transparent
-      );
-    }
-
-    .footer-text {
-      font-size: 11px;
-      color: var(--text-muted);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-top: 6px;
-      gap: 8px;
-    }
-
-    .footer-text span {
-      white-space: nowrap;
-    }
-
-    .footer-text small {
-      opacity: 0.7;
-    }
-
-    @media (max-width: 420px) {
-      .card {
-        padding: 16px 14px 18px;
-        border-radius: 18px;
-      }
-    }
-  </style>
-</head>
-<body>
-  <div class="card">
-    <div>
-      <label for="category">Category</label>
-      <select id="category">
-        <option value="">None</option>
-        <option value="Work">Work</option>
-        <option value="Study">Study</option>
-        <option value="Health">Health</option>
-        <option value="Personal">Personal</option>
-        <option value="Other">Other</option>
-      </select>
-    </div>
-
-    <div>
-      <label for="repeat">Repeat</label>
-      <select id="repeat">
-        <option value="none">Do not repeat</option>
-        <option value="daily">Every day</option>
-        <option value="weekly">Every week</option>
-      </select>
-    </div>
-
-    <div class="header">
-      <div class="title-block">
-        <div class="title" id="greeting">Create Reminder</div>
-        <div class="subtitle">Pick a title and time, I’ll ping you in Telegram.</div>
-      </div>
-      <div class="pill">
-        <span class="pill-dot"></span>
-        <span>Bot online</span>
-      </div>
-    </div>
-
-    <div>
-      <label for="title">Title</label>
-      <input id="title" type="text" placeholder="Call Ganesh about internship">
-    </div>
-
-    <div class="row">
-      <div>
-        <label for="date">Date</label>
-        <input id="date" type="date">
-      </div>
-      <div>
-        <label for="time">Time</label>
-        <input id="time" type="time">
-      </div>
-    </div>
-
-    <div class="chips">
-      <div class="chip chip-primary" data-shortcut="10m">+10 min</div>
-      <div class="chip" data-shortcut="60m">+1 hour</div>
-      <div class="chip" data-shortcut="tomorrow9">Tomorrow 09:00</div>
-      <div class="chip" data-shortcut="nextwork">Next weekday 09:00</div>
-    </div>
-
-    <div id="error" class="error"></div>
-
-    <div>
-      <label for="priority">Priority</label>
-      <select id="priority">
-        <option value="normal">Normal</option>
-        <option value="urgent">Urgent</option>
-      </select>
-    </div>
-
-    <div class="divider"></div>
-
-    <div class="hint">
-      Your reminder will be delivered as a direct message from this bot.
-      For urgent reminders you can later add voice / call notifications.
-    </div>
-
-    <div class="footer-text">
-      <span><small>Tip:</small> Use shortcuts for quick “in 10 min” reminders.</span>
-    </div>
-  </div>
-
+  <link rel="stylesheet" href="styles/main.css">
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <script>
-    const tg = window.Telegram.WebApp;
-    tg.expand();
+</head>
 
-    // Elements
-    const greetingEl = document.getElementById("greeting");
-    const titleInput = document.getElementById("title");
-    const dateInput = document.getElementById("date");
-    const timeInput = document.getElementById("time");
-    const prioritySelect = document.getElementById("priority");
-    const categorySelect = document.getElementById("category");
-    const repeatSelect = document.getElementById("repeat");
+<body>
+  <main class="app-wrapper">
+    <section class="card">
+      <!-- HEADER -->
+      <header class="header">
+        <div>
+          <h1 class="title" id="greeting">Create reminder</h1>
+          <p class="subtitle">Set up a reminder I’ll send you in Telegram.</p>
+        </div>
 
-    const errorEl = document.getElementById("error");
-    const chips = document.querySelectorAll(".chip");
+        <div class="pill pill--status">
+          <span class="pill-dot"></span>
+          <span>Bot online</span>
+        </div>
+      </header>
 
-    // Personal greeting using Telegram name if available
-    try {
-      const user = tg.initDataUnsafe?.user;
-      if (user && user.first_name) {
-        greetingEl.textContent = `Hi, ${user.first_name} 👋`;
-      }
-    } catch (e) {
-      // ignore if unavailable
-    }
+      <!-- TABS -->
+      <nav class="tabs">
+        <button class="tab tab--active" data-tab="create">New reminder</button>
+        <button class="tab" data-tab="list">My reminders</button>
+      </nav>
 
-    // Set default datetime: now + 10 minutes
-    function setDefaultDateTime() {
-      const now = new Date();
-      now.setMinutes(now.getMinutes() + 10);
-      applyDateTimeToInputs(now);
-    }
+      <!-- VIEW: CREATE -->
+      <section id="view-create" class="view view--active">
 
-    function applyDateTimeToInputs(dateObj) {
-      const yyyy = dateObj.getFullYear();
-      const mm = String(dateObj.getMonth() + 1).padStart(2, "0");
-      const dd = String(dateObj.getDate()).padStart(2, "0");
-      const hh = String(dateObj.getHours()).padStart(2, "0");
-      const min = String(dateObj.getMinutes()).padStart(2, "0");
+        <!-- CATEGORY -->
+        <section class="group">
+          <h2 class="group-title">What is this about?</h2>
 
-      dateInput.value = `${yyyy}-${mm}-${dd}`;
-      timeInput.value = `${hh}:${min}`;
-    }
+          <div class="field-group">
+            <label class="field-label">
+              Category
+              <span class="field-label-badge">Optional</span>
+            </label>
 
-    setDefaultDateTime();
+            <div class="field-inline">
+              <select id="categorySelect" class="select-input">
+                <option value="">None</option>
+                <option value="Work">Work</option>
+                <option value="Study">Study</option>
+                <option value="Personal">Personal</option>
+                <option value="Health">Health</option>
+                <option value="Other">Other</option>
+              </select>
+              <button type="button" id="addCategoryBtn" class="link-button">+ Add</button>
+            </div>
+            <input type="hidden" id="category" value="">
+          </div>
 
-    // Shortcuts / chips
-    function isWeekend(dateObj) {
-      const day = dateObj.getDay(); // 0=Sun, 6=Sat
-      return day === 0 || day === 6;
-    }
+          <!-- TITLE -->
+          <div class="field-group">
+            <label class="field-label">Title</label>
+            <input
+              id="title"
+              type="text"
+              class="field-input field-input--title"
+              placeholder="Call Ganesh about internship"
+            >
+          </div>
+        </section>
 
-    chips.forEach(chip => {
-      chip.addEventListener("click", () => {
-        const value = chip.getAttribute("data-shortcut");
-        const now = new Date();
+        <!-- WHEN -->
+        <section class="group">
+          <h2 class="group-title">When?</h2>
 
-        if (value === "10m") {
-          now.setMinutes(now.getMinutes() + 10);
-          applyDateTimeToInputs(now);
-        } else if (value === "60m") {
-          now.setMinutes(now.getMinutes() + 60);
-          applyDateTimeToInputs(now);
-        } else if (value === "tomorrow9") {
-          const tomorrow = new Date(now);
-          tomorrow.setDate(tomorrow.getDate() + 1);
-          tomorrow.setHours(9, 0, 0, 0);
-          applyDateTimeToInputs(tomorrow);
-        } else if (value === "nextwork") {
-          const d = new Date(now);
-          d.setDate(d.getDate() + 1);
-          while (isWeekend(d)) {
-            d.setDate(d.getDate() + 1);
-          }
-          d.setHours(9, 0, 0, 0);
-          applyDateTimeToInputs(d);
-        }
+          <div class="field-group field-group--row">
+            <div class="field-group__item">
+              <label class="field-label">Date</label>
+              <input id="date" type="date" class="field-input">
+            </div>
 
-        // Highlight selected chip
-        chips.forEach(c => c.classList.remove("chip-primary"));
-        chip.classList.add("chip-primary");
-      });
-    });
+            <div class="field-group__item">
+              <label class="field-label">Time</label>
+              <input id="time" type="time" class="field-input">
+            </div>
+          </div>
 
-    // MainButton setup
-    tg.MainButton.setText("Save reminder");
-    tg.MainButton.enable();
-    tg.MainButton.show();
+          <!-- REPEAT -->
+          <div class="field-group">
+            <label class="field-label">Repeat</label>
+            <div class="chip-group" data-field="repeat">
+              <button class="chip chip--active" data-value="once">Once</button>
+              <button class="chip" data-value="weekly">Every week</button>
+              <button class="chip" data-value="monthly">Every month</button>
+              <button class="chip" data-value="yearly">Every year</button>
+            </div>
+            <input type="hidden" id="repeat" value="once">
+          </div>
 
-    function validateAndBuildPayload() {
-      errorEl.textContent = "";
+          <!-- REMIND BEFORE -->
+          <div class="field-group">
+            <label class="field-label">Remind me</label>
+            <div class="chip-group" data-field="lead">
+              <button class="chip chip--active" data-value="0">At exact time</button>
+              <button class="chip" data-value="5">5 min before</button>
+              <button class="chip" data-value="15">15 min before</button>
+              <button class="chip" data-value="30">30 min before</button>
+              <button class="chip" data-value="60">1 hour before</button>
+              <button class="chip" data-value="custom">Custom…</button>
+            </div>
 
-      const title = titleInput.value.trim() || "Reminder";
-      const date = dateInput.value;
-      const time = timeInput.value;
-      const priority = prioritySelect.value;
+            <p class="remind-note">I’ll send <strong>one</strong> message at the time you choose above.</p>
+            <input type="hidden" id="lead" value="0">
 
-      if (!date || !time) {
-        errorEl.textContent = "Please choose both date and time.";
-        return null;
-      }
+            <div class="lead-custom" id="leadCustomWrapper" style="display:none;">
+              <input
+                id="leadCustomInput"
+                type="number"
+                min="1"
+                max="10080"
+                placeholder="Minutes before"
+                class="field-input lead-custom-input"
+              >
+              <p class="lead-custom-hint">Between 1 min and 7 days before the event.</p>
+            </div>
+          </div>
+        </section>
 
-      const datetimeStr = `${date}T${time}`;
-      const scheduled = new Date(datetimeStr);
-      const now = new Date();
+        <!-- PRIORITY -->
+        <section class="group">
+          <h2 class="group-title">Options</h2>
 
-      if (isNaN(scheduled.getTime())) {
-        errorEl.textContent = "Invalid date or time.";
-        return null;
-      }
+          <div class="field-group">
+            <label class="field-label">Priority</label>
+            <div class="chip-group" data-field="priority">
+              <button class="chip chip--priority" data-value="low">
+                <span class="priority-dot priority-dot--low"></span> Low
+              </button>
+              <button class="chip chip--priority chip--active" data-value="normal">
+                <span class="priority-dot priority-dot--normal"></span> Normal
+              </button>
+              <button class="chip chip--priority" data-value="urgent">
+                <span class="priority-dot priority-dot--urgent"></span> High
+              </button>
+            </div>
+            <input type="hidden" id="priority" value="normal">
+          </div>
+        </section>
 
-      if (scheduled.getTime() <= now.getTime() + 30_000) { // 30s tolerance
-        errorEl.textContent = "Reminder must be at least 1 minute in the future.";
-        return null;
-      }
+        <!-- ERROR -->
+        <p id="error" class="error"></p>
 
-      return {
-        title,
-        datetime: datetimeStr,
-        priority,
-        category: categorySelect.value || null,
-        repeat: repeatSelect.value || "none",
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || null
-      };
+        <div class="divider"></div>
 
-    }
+        <!-- PREVIEW -->
+        <section class="preview">
+          <h2 class="preview-title">Preview</h2>
+          <p class="preview-main" id="preview-main">I’ll remind you: <strong>Reminder</strong></p>
+          <p class="preview-line" id="preview-meta">Today · 00:00 · Once · At exact time · Normal priority</p>
+          <p class="preview-line preview-line--muted" id="preview-category">
+            Category: <span>None</span>
+          </p>
+        </section>
 
-    // Handle main button click
-    tg.MainButton.onClick(() => {
-      const payload = validateAndBuildPayload();
-      if (!payload) {
-        return;
-      }
+        <!-- SAVE -->
+        <button id="saveBtn" class="primary-btn">Save reminder</button>
+        <p class="hint">I’ll DM you from this bot when it's time.</p>
+      </section>
 
-      tg.sendData(JSON.stringify(payload));
+      <!-- VIEW: LIST -->
+      <section id="view-list" class="view">
+        <section class="group">
+          <h2 class="group-title">Your reminders</h2>
 
-      tg.showPopup({
-        title: "Reminder saved",
-        message: "I’ll send this reminder at the time you selected.",
-        buttons: [{ id: "ok", type: "ok" }]
-      });
+          <div class="field-group field-group--compact">
+            <label class="field-label field-label--small">Category</label>
+            <select id="filterCategory" class="select-input select-input--small">
+              <option value="">All categories</option>
+            </select>
+          </div>
 
-      setTimeout(() => tg.close(), 400);
-    });
+          <div id="remindersEmpty" class="empty-state">
+            No reminders yet.<br> Create one on the <strong>New reminder</strong> tab.
+          </div>
 
-    // Optional: close app on back button
-    tg.onEvent("backButtonClicked", () => tg.close());
-    tg.BackButton.show();
-  </script>
+          <ul id="remindersList" class="reminders-list"></ul>
+        </section>
+      </section>
+
+      <!-- CATEGORY MODAL -->
+      <div id="categoryModal" class="modal">
+        <div class="modal-backdrop"></div>
+
+        <div class="modal-dialog">
+          <h2 class="modal-title">New category</h2>
+          <p class="modal-text">Give your category a short name.</p>
+
+          <input id="categoryModalInput" class="field-input modal-input" placeholder="e.g. Finance">
+
+          <div class="modal-actions">
+            <button id="categoryModalCancel" class="modal-btn modal-btn--ghost">Cancel</button>
+            <button id="categoryModalSave" class="modal-btn modal-btn--primary">Add category</button>
+          </div>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <script src="scripts/app.js"></script>
 </body>
 </html>
