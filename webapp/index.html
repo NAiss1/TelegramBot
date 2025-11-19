@@ -6,93 +6,245 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <style>
+    :root {
+      --bg: #020617;
+      --card-bg: rgba(15, 23, 42, 0.92);
+      --border: rgba(148, 163, 184, 0.15);
+      --accent: #6366f1;
+      --accent-soft: rgba(99, 102, 241, 0.12);
+      --text-main: #e5e7eb;
+      --text-muted: #9ca3af;
+      --error: #f97373;
+      --pill-bg: rgba(15, 23, 42, 0.9);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
     body {
       margin: 0;
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #0f172a;
-      color: #e5e7eb;
+      background: radial-gradient(circle at top, #1d2538 0, #020617 55%, #000 100%);
+      color: var(--text-main);
       display: flex;
       align-items: center;
       justify-content: center;
       min-height: 100vh;
+      padding: 16px;
     }
+
     .card {
       width: 100%;
-      max-width: 420px;
-      background: #111827;
-      border-radius: 18px;
-      padding: 20px 22px 26px;
-      box-shadow: 0 22px 45px rgba(0, 0, 0, 0.5);
-      box-sizing: border-box;
+      max-width: 440px;
+      background: var(--card-bg);
+      border-radius: 22px;
+      padding: 18px 18px 20px;
+      border: 1px solid var(--border);
+      box-shadow:
+        0 24px 60px rgba(15, 23, 42, 0.85),
+        0 0 0 1px rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(18px);
     }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 10px;
+    }
+
+    .title-block {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
     .title {
-      font-size: 20px;
+      font-size: 19px;
       font-weight: 600;
-      margin-bottom: 4px;
     }
+
     .subtitle {
       font-size: 13px;
-      color: #9ca3af;
-      margin-bottom: 18px;
+      color: var(--text-muted);
     }
+
+    .pill {
+      font-size: 11px;
+      padding: 5px 9px;
+      border-radius: 999px;
+      background: var(--pill-bg);
+      border: 1px solid rgba(148, 163, 184, 0.28);
+      color: var(--text-muted);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .pill-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: #22c55e;
+      box-shadow: 0 0 0 5px rgba(34, 197, 94, 0.15);
+    }
+
     label {
       display: block;
       font-size: 13px;
       margin-bottom: 6px;
-      color: #d1d5db;
+      color: var(--text-main);
     }
+
     input, select {
       width: 100%;
-      box-sizing: border-box;
       padding: 10px 12px;
-      border-radius: 10px;
-      border: 1px solid #374151;
-      background: #020617;
-      color: #e5e7eb;
+      border-radius: 11px;
+      border: 1px solid var(--border);
+      background: rgba(2, 6, 23, 0.9);
+      color: var(--text-main);
       font-size: 14px;
       outline: none;
       margin-bottom: 14px;
+      transition: border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
     }
+
     input:focus, select:focus {
-      border-color: #6366f1;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.4);
+      background: rgba(2, 6, 23, 1);
     }
-    .btn {
-      width: 100%;
-      padding: 11px 14px;
-      border-radius: 999px;
-      border: none;
-      font-size: 15px;
-      font-weight: 600;
-      cursor: pointer;
-      background: linear-gradient(135deg, #6366f1, #22c55e);
-      color: white;
-      margin-top: 6px;
-    }
-    .btn:active {
-      opacity: 0.85;
-      transform: scale(0.99);
-    }
+
     .row {
       display: flex;
       gap: 10px;
+      margin-bottom: 4px;
     }
+
     .row > div {
       flex: 1;
     }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+
+    .chip {
+      font-size: 11px;
+      padding: 6px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      background: rgba(15, 23, 42, 0.9);
+      color: var(--text-muted);
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+    }
+
+    .chip:hover {
+      border-color: var(--accent);
+      color: var(--text-main);
+    }
+
+    .chip-primary {
+      border-color: rgba(99, 102, 241, 0.5);
+      background: var(--accent-soft);
+      color: var(--text-main);
+    }
+
+    .error {
+      font-size: 11px;
+      color: var(--error);
+      margin-top: -4px;
+      margin-bottom: 6px;
+      min-height: 14px;
+    }
+
     .hint {
       font-size: 11px;
-      color: #6b7280;
-      margin-top: 8px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .divider {
+      margin: 10px 0 8px;
+      height: 1px;
+      background: linear-gradient(
+        to right,
+        transparent,
+        rgba(148, 163, 184, 0.45),
+        transparent
+      );
+    }
+
+    .footer-text {
+      font-size: 11px;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 6px;
+      gap: 8px;
+    }
+
+    .footer-text span {
+      white-space: nowrap;
+    }
+
+    .footer-text small {
+      opacity: 0.7;
+    }
+
+    @media (max-width: 420px) {
+      .card {
+        padding: 16px 14px 18px;
+        border-radius: 18px;
+      }
     }
   </style>
 </head>
 <body>
   <div class="card">
-    <div class="title">Create Reminder</div>
-    <div class="subtitle">Set a time and I’ll ping you in Telegram.</div>
+    <div>
+      <label for="category">Category</label>
+      <select id="category">
+        <option value="">None</option>
+        <option value="Work">Work</option>
+        <option value="Study">Study</option>
+        <option value="Health">Health</option>
+        <option value="Personal">Personal</option>
+        <option value="Other">Other</option>
+      </select>
+    </div>
 
-    <label for="title">Title</label>
-    <input id="title" type="text" placeholder="Call Ganesh about internship">
+    <div>
+      <label for="repeat">Repeat</label>
+      <select id="repeat">
+        <option value="none">Do not repeat</option>
+        <option value="daily">Every day</option>
+        <option value="weekly">Every week</option>
+      </select>
+    </div>
+
+    <div class="header">
+      <div class="title-block">
+        <div class="title" id="greeting">Create Reminder</div>
+        <div class="subtitle">Pick a title and time, I’ll ping you in Telegram.</div>
+      </div>
+      <div class="pill">
+        <span class="pill-dot"></span>
+        <span>Bot online</span>
+      </div>
+    </div>
+
+    <div>
+      <label for="title">Title</label>
+      <input id="title" type="text" placeholder="Call Ganesh about internship">
+    </div>
 
     <div class="row">
       <div>
@@ -105,16 +257,32 @@
       </div>
     </div>
 
-    <label for="priority">Priority</label>
-    <select id="priority">
-      <option value="normal">Normal</option>
-      <option value="urgent">Urgent</option>
-    </select>
+    <div class="chips">
+      <div class="chip chip-primary" data-shortcut="10m">+10 min</div>
+      <div class="chip" data-shortcut="60m">+1 hour</div>
+      <div class="chip" data-shortcut="tomorrow9">Tomorrow 09:00</div>
+      <div class="chip" data-shortcut="nextwork">Next weekday 09:00</div>
+    </div>
 
-    <button class="btn" id="saveBtn">Save Reminder</button>
+    <div id="error" class="error"></div>
+
+    <div>
+      <label for="priority">Priority</label>
+      <select id="priority">
+        <option value="normal">Normal</option>
+        <option value="urgent">Urgent</option>
+      </select>
+    </div>
+
+    <div class="divider"></div>
 
     <div class="hint">
-      Your reminder will be sent as a direct message from the bot.
+      Your reminder will be delivered as a direct message from this bot.
+      For urgent reminders you can later add voice / call notifications.
+    </div>
+
+    <div class="footer-text">
+      <span><small>Tip:</small> Use shortcuts for quick “in 10 min” reminders.</span>
     </div>
   </div>
 
@@ -123,55 +291,150 @@
     const tg = window.Telegram.WebApp;
     tg.expand();
 
+    // Elements
+    const greetingEl = document.getElementById("greeting");
     const titleInput = document.getElementById("title");
     const dateInput = document.getElementById("date");
     const timeInput = document.getElementById("time");
     const prioritySelect = document.getElementById("priority");
-    const saveBtn = document.getElementById("saveBtn");
+    const categorySelect = document.getElementById("category");
+    const repeatSelect = document.getElementById("repeat");
 
-    // Default = now + 5 minutes
-    (function setDefaultDateTime() {
+    const errorEl = document.getElementById("error");
+    const chips = document.querySelectorAll(".chip");
+
+    // Personal greeting using Telegram name if available
+    try {
+      const user = tg.initDataUnsafe?.user;
+      if (user && user.first_name) {
+        greetingEl.textContent = `Hi, ${user.first_name} 👋`;
+      }
+    } catch (e) {
+      // ignore if unavailable
+    }
+
+    // Set default datetime: now + 10 minutes
+    function setDefaultDateTime() {
       const now = new Date();
-      now.setMinutes(now.getMinutes() + 5);
-      const yyyy = now.getFullYear();
-      const mm = String(now.getMonth() + 1).padStart(2, "0");
-      const dd = String(now.getDate()).padStart(2, "0");
-      const hh = String(now.getHours()).padStart(2, "0");
-      const min = String(now.getMinutes()).padStart(2, "0");
+      now.setMinutes(now.getMinutes() + 10);
+      applyDateTimeToInputs(now);
+    }
+
+    function applyDateTimeToInputs(dateObj) {
+      const yyyy = dateObj.getFullYear();
+      const mm = String(dateObj.getMonth() + 1).padStart(2, "0");
+      const dd = String(dateObj.getDate()).padStart(2, "0");
+      const hh = String(dateObj.getHours()).padStart(2, "0");
+      const min = String(dateObj.getMinutes()).padStart(2, "0");
+
       dateInput.value = `${yyyy}-${mm}-${dd}`;
       timeInput.value = `${hh}:${min}`;
-    })();
+    }
 
-    saveBtn.addEventListener("click", () => {
+    setDefaultDateTime();
+
+    // Shortcuts / chips
+    function isWeekend(dateObj) {
+      const day = dateObj.getDay(); // 0=Sun, 6=Sat
+      return day === 0 || day === 6;
+    }
+
+    chips.forEach(chip => {
+      chip.addEventListener("click", () => {
+        const value = chip.getAttribute("data-shortcut");
+        const now = new Date();
+
+        if (value === "10m") {
+          now.setMinutes(now.getMinutes() + 10);
+          applyDateTimeToInputs(now);
+        } else if (value === "60m") {
+          now.setMinutes(now.getMinutes() + 60);
+          applyDateTimeToInputs(now);
+        } else if (value === "tomorrow9") {
+          const tomorrow = new Date(now);
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          tomorrow.setHours(9, 0, 0, 0);
+          applyDateTimeToInputs(tomorrow);
+        } else if (value === "nextwork") {
+          const d = new Date(now);
+          d.setDate(d.getDate() + 1);
+          while (isWeekend(d)) {
+            d.setDate(d.getDate() + 1);
+          }
+          d.setHours(9, 0, 0, 0);
+          applyDateTimeToInputs(d);
+        }
+
+        // Highlight selected chip
+        chips.forEach(c => c.classList.remove("chip-primary"));
+        chip.classList.add("chip-primary");
+      });
+    });
+
+    // MainButton setup
+    tg.MainButton.setText("Save reminder");
+    tg.MainButton.enable();
+    tg.MainButton.show();
+
+    function validateAndBuildPayload() {
+      errorEl.textContent = "";
+
       const title = titleInput.value.trim() || "Reminder";
       const date = dateInput.value;
       const time = timeInput.value;
       const priority = prioritySelect.value;
 
       if (!date || !time) {
-        tg.showAlert("Please choose date and time.");
+        errorEl.textContent = "Please choose both date and time.";
+        return null;
+      }
+
+      const datetimeStr = `${date}T${time}`;
+      const scheduled = new Date(datetimeStr);
+      const now = new Date();
+
+      if (isNaN(scheduled.getTime())) {
+        errorEl.textContent = "Invalid date or time.";
+        return null;
+      }
+
+      if (scheduled.getTime() <= now.getTime() + 30_000) { // 30s tolerance
+        errorEl.textContent = "Reminder must be at least 1 minute in the future.";
+        return null;
+      }
+
+      return {
+        title,
+        datetime: datetimeStr,
+        priority,
+        category: categorySelect.value || null,
+        repeat: repeatSelect.value || "none",
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || null
+      };
+
+    }
+
+    // Handle main button click
+    tg.MainButton.onClick(() => {
+      const payload = validateAndBuildPayload();
+      if (!payload) {
         return;
       }
 
-      const datetime = `${date}T${time}`; // "YYYY-MM-DDTHH:MM"
-
-      const payload = {
-        title,
-        datetime,
-        priority
-      };
-
-      // Send to bot
       tg.sendData(JSON.stringify(payload));
 
       tg.showPopup({
-        title: "Saved",
-        message: "Your reminder was sent to the bot.",
+        title: "Reminder saved",
+        message: "I’ll send this reminder at the time you selected.",
         buttons: [{ id: "ok", type: "ok" }]
       });
 
-      setTimeout(() => tg.close(), 300);
+      setTimeout(() => tg.close(), 400);
     });
+
+    // Optional: close app on back button
+    tg.onEvent("backButtonClicked", () => tg.close());
+    tg.BackButton.show();
   </script>
 </body>
 </html>
