@@ -8,210 +8,253 @@
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap"
+    rel="stylesheet"
+  >
 
   <link rel="stylesheet" href="styles/main.css">
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 
 <body>
-  <main class="app-wrapper">
-    <section class="card">
+  <div class="app">
+    <div class="card">
       <!-- HEADER -->
       <header class="header">
-        <div>
-          <h1 class="title" id="greeting">Create reminder</h1>
-          <p class="subtitle">Set up a reminder I’ll send you in Telegram.</p>
-        </div>
-
-        <div class="pill pill--status">
-          <span class="pill-dot"></span>
-          <span>Bot online</span>
+        <div class="header-left">
+          <div class="brand-icon">NR</div>
+          <div>
+            <div class="brand-title">NAiss REM</div>
+            <div class="brand-subtitle">Quick reminders for busy days</div>
+          </div>
         </div>
       </header>
 
       <!-- TABS -->
-      <nav class="tabs">
-        <button class="tab tab--active" data-tab="create">New reminder</button>
-        <button class="tab" data-tab="list">My reminders</button>
-      </nav>
+      <div class="tabs">
+        <button class="tab tab--active" data-tab="create">
+          New reminder
+        </button>
+        <button class="tab" data-tab="list">
+          Calendar
+        </button>
+      </div>
 
-      <!-- VIEW: CREATE -->
-      <section id="view-create" class="view view--active">
-
-        <!-- CATEGORY -->
-        <section class="group">
-          <h2 class="group-title">What is this about?</h2>
-
-          <div class="field-group">
-            <label class="field-label">
-              Category
-              <span class="field-label-badge">Optional</span>
-            </label>
-
-            <div class="field-inline">
-              <select id="categorySelect" class="select-input">
-                <option value="">None</option>
-                <option value="Work">Work</option>
-                <option value="Study">Study</option>
-                <option value="Personal">Personal</option>
-                <option value="Health">Health</option>
-                <option value="Other">Other</option>
-              </select>
-              <button type="button" id="addCategoryBtn" class="link-button">+ Add</button>
+      <!-- VIEWS -->
+      <main class="views">
+        <!-- CREATE VIEW -->
+        <section class="view view--active" id="view-create">
+          <!-- Edit mode banner -->
+          <div class="edit-banner" id="editBanner" style="display: none;">
+            <div class="edit-banner-left">
+              <span class="edit-badge">Editing</span>
+              <span class="edit-text">You are updating an existing reminder</span>
             </div>
-            <input type="hidden" id="category" value="">
+            <button class="btn-pill" id="cancelEditBtn">
+              <span>Cancel</span>
+            </button>
           </div>
+
+          <!-- Hidden state inputs -->
+          <input type="hidden" id="repeatHidden" value="once">
+          <input type="hidden" id="leadHidden" value="0">
+          <input type="hidden" id="categoryHidden" value="">
 
           <!-- TITLE -->
-          <div class="field-group">
-            <label class="field-label">Title</label>
-            <input
-              id="title"
-              type="text"
-              class="field-input field-input--title"
-              placeholder="Call Ganesh about internship"
-            >
-          </div>
-        </section>
-
-        <!-- WHEN -->
-        <section class="group">
-          <h2 class="group-title">When?</h2>
-
-          <div class="field-group field-group--row">
-            <div class="field-group__item">
-              <label class="field-label">Date</label>
-              <input id="date" type="date" class="field-input">
+          <section class="group">
+            <div class="field-group">
+              <label class="field-label field-label-primary">
+                Title
+              </label>
+              <input
+                id="title"
+                type="text"
+                class="field-input"
+                placeholder="Example: Call client about contract"
+              >
             </div>
+          </section>
 
-            <div class="field-group__item">
-              <label class="field-label">Time</label>
-              <input id="time" type="time" class="field-input">
+          <!-- DATE & TIME -->
+          <section class="group">
+            <div class="field-group">
+              <label class="field-label field-label-primary">
+                When
+              </label>
+              <div class="field-inline">
+                <input id="date" type="date" class="field-input">
+                <input id="time" type="time" class="field-input">
+              </div>
             </div>
-          </div>
+          </section>
 
           <!-- REPEAT -->
-          <div class="field-group">
-            <label class="field-label">Repeat</label>
-            <div class="chip-group" data-field="repeat">
-              <button class="chip chip--active" data-value="once">Once</button>
-              <button class="chip" data-value="weekly">Every week</button>
-              <button class="chip" data-value="monthly">Every month</button>
-              <button class="chip" data-value="yearly">Every year</button>
+          <section class="group">
+            <div class="field-group">
+              <label class="field-label">
+                Repeat
+              </label>
+              <select id="repeat" class="select-input">
+                <option value="once">Once</option>
+                <option value="weekly">Every week</option>
+                <option value="monthly">Every month</option>
+                <option value="yearly">Every year</option>
+              </select>
             </div>
-            <input type="hidden" id="repeat" value="once">
-          </div>
+          </section>
 
-          <!-- REMIND BEFORE -->
-          <div class="field-group">
-            <label class="field-label">Remind me</label>
-            <div class="chip-group" data-field="lead">
-              <button class="chip chip--active" data-value="0">At exact time</button>
-              <button class="chip" data-value="5">5 min before</button>
-              <button class="chip" data-value="15">15 min before</button>
-              <button class="chip" data-value="30">30 min before</button>
-              <button class="chip" data-value="60">1 hour before</button>
-              <button class="chip" data-value="custom">Custom…</button>
+          <!-- LEAD TIME -->
+          <section class="group">
+            <div class="field-group" data-field="lead">
+              <label class="field-label">
+                Remind me
+              </label>
+              <div class="chips">
+                <button type="button" class="chip chip--active" data-value="0">
+                  <span>At time</span>
+                </button>
+                <button type="button" class="chip" data-value="5">
+                  <span>5 min</span>
+                </button>
+                <button type="button" class="chip" data-value="15">
+                  <span>15 min</span>
+                </button>
+                <button type="button" class="chip" data-value="30">
+                  <span>30 min</span>
+                </button>
+                <button type="button" class="chip" data-value="60">
+                  <span>1 hr</span>
+                </button>
+              </div>
             </div>
+          </section>
 
-            <p class="remind-note">I’ll send <strong>one</strong> message at the time you choose above.</p>
-            <input type="hidden" id="lead" value="0">
+          <!-- CATEGORY -->
+          <section class="group">
+            <div class="field-group">
+              <label class="field-label">
+                Category
+              </label>
 
-            <div class="lead-custom" id="leadCustomWrapper" style="display:none;">
-              <input
-                id="leadCustomInput"
-                type="number"
-                min="1"
-                max="10080"
-                placeholder="Minutes before"
-                class="field-input lead-custom-input"
-              >
-              <p class="lead-custom-hint">Between 1 min and 7 days before the event.</p>
+              <div class="field-inline">
+                <select id="categorySelect" class="select-input">
+                  <option value="">None</option>
+                </select>
+              </div>
+
+              <button type="button" id="addCategoryBtn" class="add-category-btn">
+                <span>＋ Add category</span>
+              </button>
             </div>
-          </div>
+          </section>
+
+          <!-- NOTE -->
+          <section class="group">
+            <div class="field-group">
+              <label class="field-label">
+                Note
+              </label>
+              <textarea
+                id="note"
+                class="field-input field-input--note"
+                placeholder="Details, links, addresses…"
+              ></textarea>
+            </div>
+          </section>
+
+          <!-- PREVIEW -->
+          <section class="group preview">
+            <div class="preview-label">Preview</div>
+            <div class="preview-card">
+              <div class="preview-main">
+                <div id="preview-title" class="preview-title">Reminder</div>
+                <div id="preview-meta" class="preview-meta">Once · Today</div>
+              </div>
+              <div id="preview-category" class="preview-badge">
+                <span>None</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- ERROR -->
+          <div id="error" class="error"></div>
+
+          <!-- SAVE BUTTON -->
+          <button id="saveBtn" class="primary-btn" type="button">
+            <span>Save reminder</span>
+          </button>
         </section>
 
-        <!-- PRIORITY -->
-        <section class="group">
-          <h2 class="group-title">Options</h2>
-
-          <div class="field-group">
-            <label class="field-label">Priority</label>
-            <div class="chip-group" data-field="priority">
-              <button class="chip chip--priority" data-value="low">
-                <span class="priority-dot priority-dot--low"></span> Low
-              </button>
-              <button class="chip chip--priority chip--active" data-value="normal">
-                <span class="priority-dot priority-dot--normal"></span> Normal
-              </button>
-              <button class="chip chip--priority" data-value="urgent">
-                <span class="priority-dot priority-dot--urgent"></span> High
-              </button>
-            </div>
-            <input type="hidden" id="priority" value="normal">
-          </div>
-        </section>
-
-        <!-- ERROR -->
-        <p id="error" class="error"></p>
-
-        <div class="divider"></div>
-
-        <!-- PREVIEW -->
-        <section class="preview">
-          <h2 class="preview-title">Preview</h2>
-          <p class="preview-main" id="preview-main">I’ll remind you: <strong>Reminder</strong></p>
-          <p class="preview-line" id="preview-meta">Today · 00:00 · Once · At exact time · Normal priority</p>
-          <p class="preview-line preview-line--muted" id="preview-category">
-            Category: <span>None</span>
-          </p>
-        </section>
-
-        <!-- SAVE -->
-        <button id="saveBtn" class="primary-btn">Save reminder</button>
-        <p class="hint">I’ll DM you from this bot when it's time.</p>
-      </section>
-
-      <!-- VIEW: LIST -->
-      <section id="view-list" class="view">
-        <section class="group">
-          <h2 class="group-title">Your reminders</h2>
-
-          <div class="field-group field-group--compact">
-            <label class="field-label field-label--small">Category</label>
-            <select id="filterCategory" class="select-input select-input--small">
+        <!-- LIST / CALENDAR VIEW -->
+        <section class="view" id="view-list">
+          <div class="reminders-header">
+            <div class="reminders-title">Calendar</div>
+            <select id="filterCategory" class="select-input filter-select">
               <option value="">All categories</option>
             </select>
           </div>
 
-          <div id="remindersEmpty" class="empty-state">
-            No reminders yet.<br> Create one on the <strong>New reminder</strong> tab.
+          <div class="calendar-card">
+            <div class="calendar-header">
+              <div class="calendar-month-row">
+                <div class="calendar-month-label">
+                  <span id="calendarMonthLabel" class="calendar-month">Month</span>
+                </div>
+                <div class="calendar-selected-label" id="selectedDateLabel"></div>
+              </div>
+
+              <div class="calendar-nav">
+                <button id="calPrev" type="button" class="calendar-nav-btn">‹</button>
+                <button id="calNext" type="button" class="calendar-nav-btn">›</button>
+              </div>
+            </div>
+
+            <div class="calendar-weekdays">
+              <span>Mon</span>
+              <span>Tue</span>
+              <span>Wed</span>
+              <span>Thu</span>
+              <span>Fri</span>
+              <span>Sat</span>
+              <span>Sun</span>
+            </div>
+
+            <div id="calendarGrid" class="calendar-grid"></div>
+          </div>
+
+          <div id="remindersEmpty" class="reminders-empty">
+            No reminders on this day.
           </div>
 
           <ul id="remindersList" class="reminders-list"></ul>
         </section>
-      </section>
+      </main>
 
       <!-- CATEGORY MODAL -->
-      <div id="categoryModal" class="modal">
+      <div id="categoryModal" class="modal" style="display: none;">
         <div class="modal-backdrop"></div>
-
         <div class="modal-dialog">
           <h2 class="modal-title">New category</h2>
-          <p class="modal-text">Give your category a short name.</p>
-
-          <input id="categoryModalInput" class="field-input modal-input" placeholder="e.g. Finance">
-
+          <p class="modal-text">Give your category a short name, like “Work” or “Personal”.</p>
+          <input
+            id="categoryModalInput"
+            class="field-input"
+            type="text"
+            placeholder="Category name"
+          >
           <div class="modal-actions">
-            <button id="categoryModalCancel" class="modal-btn modal-btn--ghost">Cancel</button>
-            <button id="categoryModalSave" class="modal-btn modal-btn--primary">Add category</button>
+            <button id="categoryModalCancel" class="modal-btn modal-btn--ghost" type="button">
+              Cancel
+            </button>
+            <button id="categoryModalSave" class="modal-btn modal-btn--primary" type="button">
+              Add category
+            </button>
           </div>
         </div>
       </div>
-
-    </section>
-  </main>
+    </div>
+  </div>
 
   <script src="scripts/app.js"></script>
 </body>

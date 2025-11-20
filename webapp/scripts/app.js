@@ -1,5 +1,4 @@
 (function () {
-  // Telegram WebApp detection
   const tg =
     window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
   const hasTelegram = !!tg;
@@ -8,82 +7,72 @@
     tg.expand();
   }
 
-  /* -------------------------------------
-     ELEMENTS
-  ------------------------------------- */
-
-  const greetingEl = document.getElementById("greeting");
+  /* ELEMENTS */
 
   const titleInput = document.getElementById("title");
   const dateInput = document.getElementById("date");
   const timeInput = document.getElementById("time");
+  const noteInput = document.getElementById("note");
 
-  const repeatHidden = document.getElementById("repeat");
-  const categoryHidden = document.getElementById("category");
-  const priorityHidden = document.getElementById("priority");
-  const leadHidden = document.getElementById("lead");
-
-  const leadCustomWrapper = document.getElementById("leadCustomWrapper");
-  const leadCustomInput = document.getElementById("leadCustomInput");
+  const repeatHidden = document.getElementById("repeatHidden");
+  const repeatSelect = document.getElementById("repeat");
+  const leadHidden = document.getElementById("leadHidden");
+  const categoryHidden = document.getElementById("categoryHidden");
 
   const categorySelect = document.getElementById("categorySelect");
   const addCategoryBtn = document.getElementById("addCategoryBtn");
+
   const filterCategorySelect = document.getElementById("filterCategory");
 
   const errorEl = document.getElementById("error");
 
-  const previewMain = document.getElementById("preview-main");
-  const previewDatetime = document.getElementById("preview-meta");
+  const previewTitle = document.getElementById("preview-title");
+  const previewMeta = document.getElementById("preview-meta");
   const previewCategory = document.querySelector("#preview-category span");
 
-  const repeatChips = document.querySelectorAll('[data-field="repeat"] .chip');
-  const priorityChips = document.querySelectorAll(
-    '[data-field="priority"] .chip'
-  );
   const leadChips = document.querySelectorAll('[data-field="lead"] .chip');
 
   const tabs = document.querySelectorAll(".tab");
   const views = document.querySelectorAll(".view");
+  const viewCreate = document.getElementById("view-create");
   const saveBtn = document.getElementById("saveBtn");
 
   const remindersListEl = document.getElementById("remindersList");
   const remindersEmptyEl = document.getElementById("remindersEmpty");
 
-  /* -------------------------------------
-     MODAL ELEMENTS
-  ------------------------------------- */
+  // Calendar elements
+  const calendarMonthLabel = document.getElementById("calendarMonthLabel");
+  const calendarGrid = document.getElementById("calendarGrid");
+  const selectedDateLabel = document.getElementById("selectedDateLabel");
+  const calPrevBtn = document.getElementById("calPrev");
+  const calNextBtn = document.getElementById("calNext");
 
+  // Modal
   const categoryModal = document.getElementById("categoryModal");
   const categoryModalInput = document.getElementById("categoryModalInput");
   const categoryModalCancel = document.getElementById("categoryModalCancel");
   const categoryModalSave = document.getElementById("categoryModalSave");
 
-  /* -------------------------------------
-     STORAGE KEYS
-  ------------------------------------- */
+  // Edit banner
+  const editBanner = document.getElementById("editBanner");
+  const cancelEditBtn = document.getElementById("cancelEditBtn");
 
   const STORAGE_REMINDERS_KEY = "reminders_webapp";
   const STORAGE_CATEGORIES_KEY = "reminders_categories";
 
   let reminders = [];
 
-  /* -------------------------------------
-     TELEGRAM GREETING
-  ------------------------------------- */
+  // timers for soft delete (undo delete)
+  const pendingDeleteTimers = {};
 
-  function setGreeting() {
-    if (!hasTelegram) return;
-    try {
-      const user = tg.initDataUnsafe?.user;
-      if (user?.first_name) {
-        greetingEl.textContent = `Create reminder, ${user.first_name}`;
-      }
-    } catch (e) {}
-  }
+  let currentMonth;
+  let currentYear;
+  let selectedDate;
 
-  /* -------------------------------------
-     DATE/TIME HELPERS
-  ------------------------------------- */
+  // id of reminder we are editing (null = creating new)
+  let currentEditId = null;
+
+  /* DATE/TIME HELPERS */
 
   function applyDateTimeToInputs(dateObj) {
     const yyyy = dateObj.getFullYear();
@@ -111,16 +100,14 @@
   }
 
   function formatDateTime(dt) {
-    if (!dt || isNaN(dt.getTime())) return "not set";
-
     const today = new Date();
     const isToday =
       dt.getFullYear() === today.getFullYear() &&
       dt.getMonth() === today.getMonth() &&
       dt.getDate() === today.getDate();
 
-    const options = { hour: "2-digit", minute: "2-digit" };
-    const timeStr = dt.toLocaleTimeString(undefined, options);
+    const opts = { hour: "2-digit", minute: "2-digit" };
+    const timeStr = dt.toLocaleTimeString(undefined, opts);
 
     if (isToday) return `Today · ${timeStr}`;
 
@@ -143,117 +130,27 @@
     return `${dateStr} · ${timeStr}`;
   }
 
-  /* -------------------------------------
-     CHIP HANDLING
-  ------------------------------------- */
+  /* CHIPS (lead) */
 
-  function setupChipGroup(chips, hiddenInput, customHandler) {
-    chips.forEach((chip) => {
+  function setupLeadChips() {
+    leadChips.forEach((chip) => {
       chip.addEventListener("click", () => {
-        if (customHandler) {
-          customHandler(chip, chips, hiddenInput);
-        } else {
-          chips.forEach((c) => c.classList.remove("chip--active"));
-          chip.classList.add("chip--active");
-          hiddenInput.value = chip.dataset.value;
-          updatePreview();
-        }
+        const value = chip.dataset.value;
+        leadHidden.value = value;
+
+        leadChips.forEach((c) => c.classList.remove("chip--active"));
+        chip.classList.add("chip--active");
+        updatePreview();
       });
     });
   }
 
-  function leadChipHandler(chip, chips, hiddenInput) {
-    const val = chip.dataset.value;
-
-    chips.forEach((c) => c.classList.remove("chip--active"));
-    chip.classList.add("chip--active");
-
-    hiddenInput.value = val;
-
-    if (val === "custom") {
-      leadCustomWrapper.style.display = "block";
-      leadCustomInput.focus();
-    } else {
-      leadCustomWrapper.style.display = "none";
-    }
-
-    updatePreview();
-  }
-
-  /* -------------------------------------
-     CATEGORY STORAGE
-  ------------------------------------- */
-
-  function loadCategories() {
-    let stored = [];
-    try {
-      stored = JSON.parse(localStorage.getItem(STORAGE_CATEGORIES_KEY) || "[]");
-    } catch (e) {
-      stored = [];
-    }
-
-    const defaults = ["Work", "Study", "Personal", "Health", "Other"];
-
-    const all = ["", ...defaults, ...stored.filter((c) => !!c)];
-
-    categorySelect.innerHTML = "";
-    all.forEach((cat) => {
-      const opt = document.createElement("option");
-      opt.value = cat;
-      opt.textContent = cat || "None";
-      categorySelect.appendChild(opt);
-    });
-
-    filterCategorySelect.innerHTML = "";
-    const allOpt = document.createElement("option");
-    allOpt.value = "";
-    allOpt.textContent = "All categories";
-    filterCategorySelect.appendChild(allOpt);
-
-    const added = new Set();
-    all.forEach((cat) => {
-      if (!cat || added.has(cat)) return;
-      added.add(cat);
-      const opt = document.createElement("option");
-      opt.value = cat;
-      opt.textContent = cat;
-      filterCategorySelect.appendChild(opt);
-    });
-  }
-
-  function addCategory(name) {
-    const trimmed = name.trim();
-    if (!trimmed) return;
-
-    let stored = [];
-    try {
-      stored = JSON.parse(localStorage.getItem(STORAGE_CATEGORIES_KEY) || "[]");
-    } catch (e) {
-      stored = [];
-    }
-
-    if (!stored.some((c) => c.toLowerCase() === trimmed.toLowerCase())) {
-      stored.push(trimmed);
-      localStorage.setItem(STORAGE_CATEGORIES_KEY, JSON.stringify(stored));
-    }
-
-    loadCategories();
-
-    categorySelect.value = trimmed;
-    categoryHidden.value = trimmed;
-    updatePreview();
-  }
-
-  /* -------------------------------------
-     PREVIEW
-  ------------------------------------- */
+  /* PREVIEW */
 
   function updatePreview() {
     const title = titleInput.value.trim() || "Reminder";
     const dt = getScheduledDate();
-
     const repeatVal = repeatHidden.value;
-    const priorityVal = priorityHidden.value;
     const categoryVal = categoryHidden.value || "None";
 
     const repeatMap = {
@@ -263,118 +160,316 @@
       yearly: "Every year",
     };
 
-    const priorityMap = {
-      low: "Low priority",
-      normal: "Normal priority",
-      urgent: "High priority",
-    };
+    let metaText = repeatMap[repeatVal] || "Once";
 
-    const leadMap = {
-      0: "At exact time",
-      5: "5 min before",
-      15: "15 min before",
-      30: "30 min before",
-      60: "1 hour before",
-    };
-
-    let leadLabel = leadMap[leadHidden.value] || "Custom time";
-
-    if (leadHidden.value === "custom") {
-      const m = parseInt(leadCustomInput.value || "0", 10);
-      if (m > 0) leadLabel = `${m} min before`;
+    if (dt && !isNaN(dt.getTime())) {
+      metaText += " · " + formatDateTime(dt);
     }
 
-    previewMain.innerHTML = `I’ll remind you: <strong>${escapeHtml(
-      title
-    )}</strong>`;
-
-    previewDatetime.textContent =
-      `${formatDateTime(dt)} · ${repeatMap[repeatVal]} · ${leadLabel} · ${priorityMap[priorityVal]}`;
-
+    previewTitle.textContent = title;
+    previewMeta.textContent = metaText;
     previewCategory.textContent = categoryVal;
   }
 
-  function escapeHtml(str) {
-    return str.replace(/[&<>]/g, (tag) => {
-      const chars = { "&": "&amp;", "<": "&lt;", ">": "&gt;" };
-      return chars[tag] || tag;
-    });
+  /* STORAGE */
+
+  function saveRemindersToStorage() {
+    try {
+      localStorage.setItem(STORAGE_REMINDERS_KEY, JSON.stringify(reminders));
+    } catch (e) {
+      console.error("Failed to save reminders", e);
+    }
   }
 
-  /* -------------------------------------
-     REMINDER VALIDATION
-  ------------------------------------- */
+  function loadRemindersFromStorage() {
+    try {
+      const raw = localStorage.getItem(STORAGE_REMINDERS_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        reminders = parsed;
+      }
+    } catch (e) {
+      console.error("Failed to load reminders", e);
+    }
+  }
+
+  function saveCategoriesToStorage(categories) {
+    try {
+      localStorage.setItem(STORAGE_CATEGORIES_KEY, JSON.stringify(categories));
+    } catch (e) {
+      console.error("Failed to save categories", e);
+    }
+  }
+
+  function loadCategories() {
+    let categories = [];
+    try {
+      const raw = localStorage.getItem(STORAGE_CATEGORIES_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) categories = parsed;
+      }
+    } catch (e) {
+      console.error("Failed to load categories", e);
+    }
+
+    // unique + sort
+    const unique = Array.from(new Set(categories)).sort((a, b) =>
+      a.localeCompare(b)
+    );
+
+    populateCategorySelects(unique);
+  }
+
+  function populateCategorySelects(categories) {
+    const currentMain = categorySelect.value;
+    const currentFilter = filterCategorySelect.value;
+
+    categorySelect.innerHTML = "";
+    filterCategorySelect.innerHTML = "";
+
+    // main select
+    const noneOption = document.createElement("option");
+    noneOption.value = "";
+    noneOption.textContent = "None";
+    categorySelect.appendChild(noneOption);
+
+    categories.forEach((cat) => {
+      const opt = document.createElement("option");
+      opt.value = cat;
+      opt.textContent = cat;
+      categorySelect.appendChild(opt);
+    });
+
+    // filter select
+    const allOpt = document.createElement("option");
+    allOpt.value = "";
+    allOpt.textContent = "All categories";
+    filterCategorySelect.appendChild(allOpt);
+
+    categories.forEach((cat) => {
+      const opt = document.createElement("option");
+      opt.value = cat;
+      opt.textContent = cat;
+      filterCategorySelect.appendChild(opt);
+    });
+
+    // restore selected values if still exist
+    if ([...categorySelect.options].some((o) => o.value === currentMain)) {
+      categorySelect.value = currentMain;
+      categoryHidden.value = currentMain;
+    }
+
+    if ([...filterCategorySelect.options].some((o) => o.value === currentFilter)) {
+      filterCategorySelect.value = currentFilter;
+    }
+  }
+
+  /* CATEGORY MODAL */
+
+  function openCategoryModal() {
+    categoryModal.style.display = "flex";
+    categoryModalInput.value = "";
+    categoryModalInput.focus();
+  }
+
+  function closeCategoryModal() {
+    categoryModal.style.display = "none";
+  }
+
+  function handleCategoryModalSave() {
+    const value = categoryModalInput.value.trim();
+    if (!value) {
+      closeCategoryModal();
+      return;
+    }
+
+    let categories = [];
+    try {
+      const raw = localStorage.getItem(STORAGE_CATEGORIES_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) categories = parsed;
+      }
+    } catch (e) {
+      console.error("Failed to load categories before save", e);
+    }
+
+    categories.push(value);
+    categories = Array.from(new Set(categories));
+    saveCategoriesToStorage(categories);
+    populateCategorySelects(categories);
+
+    // select newly created category
+    categorySelect.value = value;
+    categoryHidden.value = value;
+    updatePreview();
+    renderCalendar();
+    renderReminders();
+
+    closeCategoryModal();
+  }
+
+  /* VALIDATION */
 
   function validateAndBuildPayload() {
+    // clear errors
     errorEl.textContent = "";
-    const title = titleInput.value.trim() || "Reminder";
+    [titleInput, dateInput, timeInput].forEach((el) =>
+      el.classList.remove("field-input--error")
+    );
+
+    const rawTitle = titleInput.value.trim();
+    if (!rawTitle) {
+      errorEl.textContent = "Please add a title.";
+      titleInput.classList.add("field-input--error");
+      return null;
+    }
 
     const dt = getScheduledDate();
     if (!dt || isNaN(dt.getTime())) {
       errorEl.textContent = "Please choose a valid date and time.";
+      dateInput.classList.add("field-input--error");
+      timeInput.classList.add("field-input--error");
       return null;
     }
 
     const now = new Date();
     if (dt.getTime() <= now.getTime()) {
       errorEl.textContent = "Time must be in the future.";
+      dateInput.classList.add("field-input--error");
+      timeInput.classList.add("field-input--error");
       return null;
     }
 
-    let leadMinutes = 0;
-    if (leadHidden.value === "custom") {
-      const m = parseInt(leadCustomInput.value || "0", 10);
-      if (!m || m <= 0) {
-        errorEl.textContent = "Enter custom minutes.";
-        return null;
-      }
-      leadMinutes = m;
-    } else {
-      leadMinutes = parseInt(leadHidden.value, 10) || 0;
-    }
+    const leadMinutes = parseInt(leadHidden.value, 10) || 0;
 
-    // Prevent reminders from triggering in the past
     if (dt.getTime() - leadMinutes * 60000 <= now.getTime()) {
       errorEl.textContent = "Lead time is too early.";
+      dateInput.classList.add("field-input--error");
+      timeInput.classList.add("field-input--error");
       return null;
     }
 
     return {
-      id: Date.now().toString(),
-      title,
+      id: currentEditId || Date.now().toString(),
+      title: rawTitle,
       datetime: dt.toISOString(),
       repeat: repeatHidden.value,
-      priority: priorityHidden.value,
       category: categoryHidden.value,
+      note: noteInput.value.trim(),
       remind_before_minutes: leadMinutes,
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     };
   }
 
-  /* -------------------------------------
-     LOCAL STORAGE REMINDERS LIST
-  ------------------------------------- */
+  /* FORM RESET + EDIT STATE */
 
-  function loadRemindersFromStorage() {
-    try {
-      reminders = JSON.parse(localStorage.getItem(STORAGE_REMINDERS_KEY) || "[]");
-    } catch (e) {
-      reminders = [];
+  function resetFormToDefaults() {
+    currentEditId = null;
+
+    setDefaultDateTime();
+
+    // text fields
+    titleInput.value = "";
+    noteInput.value = "";
+
+    // category
+    categoryHidden.value = "";
+    categorySelect.value = "";
+
+    // repeat
+    repeatHidden.value = "once";
+    repeatSelect.value = "once";
+
+    // lead time (remind me)
+    leadHidden.value = "0";
+    leadChips.forEach((c) => {
+      if (c.dataset.value === "0") {
+        c.classList.add("chip--active");
+      } else {
+        c.classList.remove("chip--active");
+      }
+    });
+
+    updatePreview();
+  }
+
+  /* SAVE BUTTON MODE */
+
+  function setSaveMode(mode) {
+    if (mode === "edit") {
+      saveBtn.textContent = "Update reminder";
+      saveBtn.classList.add("primary-btn--edit");
+      editBanner.style.display = "flex";
+
+      if (viewCreate) {
+        viewCreate.classList.add("view--editing");
+      }
+    } else {
+      saveBtn.textContent = "Save reminder";
+      saveBtn.classList.remove("primary-btn--edit");
+      editBanner.style.display = "none";
+      currentEditId = null;
+
+      if (viewCreate) {
+        viewCreate.classList.remove("view--editing");
+      }
     }
   }
 
-  function saveRemindersToStorage() {
-    localStorage.setItem(STORAGE_REMINDERS_KEY, JSON.stringify(reminders));
+  function cancelEdit() {
+    setSaveMode("new");
+    resetFormToDefaults();
+  }
+
+  /* RENDER REMINDERS LIST (for selected date) */
+
+  // Soft delete: first click = mark red + start timer, second click = undo
+  function handleDeleteClick(id, li, delBtn) {
+    // If already pending -> this click means "undo"
+    if (pendingDeleteTimers[id]) {
+      clearTimeout(pendingDeleteTimers[id]);
+      delete pendingDeleteTimers[id];
+
+      li.classList.remove("reminder-card--pending-delete");
+      delBtn.textContent = "×";
+      delBtn.title = "Delete";
+
+      renderReminders();
+      return;
+    }
+
+    // First click: mark as pending delete
+    li.classList.add("reminder-card--pending-delete");
+    delBtn.textContent = "Undo";
+    delBtn.title = "Undo delete";
+
+    // After 10 seconds, delete for real if not undone
+    pendingDeleteTimers[id] = setTimeout(() => {
+      deleteReminder(id);
+      delete pendingDeleteTimers[id];
+    }, 10000);
   }
 
   function renderReminders() {
-    const filter = filterCategorySelect.value || "";
+    if (!selectedDate) return;
 
+    const filter = filterCategorySelect.value || "";
     remindersListEl.innerHTML = "";
 
-    const filtered = reminders.filter((r) =>
-      filter ? (r.category || "").toLowerCase() === filter.toLowerCase() : true
-    );
+    const filtered = reminders.filter((r) => {
+      const rd = new Date(r.datetime);
+      if (!sameDay(rd, selectedDate)) return false;
+      if (
+        filter &&
+        (r.category || "").toLowerCase() !== filter.toLowerCase()
+      ) {
+        return false;
+      }
+      return true;
+    });
 
     if (filtered.length === 0) {
       remindersEmptyEl.style.display = "block";
@@ -389,32 +484,26 @@
       .forEach((rem) => {
         const li = document.createElement("li");
         li.className = "reminder-card";
-        li.dataset.id = rem.id;
 
         const main = document.createElement("div");
-        main.style.flex = "1";
+        main.className = "reminder-card-main";
 
         const titleRow = document.createElement("div");
-        titleRow.style.display = "flex";
-        titleRow.style.justifyContent = "space-between";
-        titleRow.style.alignItems = "center";
+        titleRow.className = "reminder-card-title-row";
 
-        const titleSpan = document.createElement("span");
-        titleSpan.className = "reminder-card-title";
-        titleSpan.textContent = rem.title;
-        titleRow.appendChild(titleSpan);
+        const titleEl = document.createElement("div");
+        titleEl.className = "reminder-card-title";
+        titleEl.textContent = rem.title;
 
-        if (rem.category) {
-          const badge = document.createElement("span");
-          badge.className = "reminder-card-badge";
-          badge.textContent = rem.category;
-          titleRow.appendChild(badge);
-        }
+        const badge = document.createElement("span");
+        badge.className = "reminder-card-badge";
+        badge.textContent = rem.category || "None";
 
-        const meta = document.createElement("div");
-        meta.className = "reminder-card-meta";
+        titleRow.appendChild(titleEl);
+        titleRow.appendChild(badge);
 
-        const dtLabel = formatDateTime(new Date(rem.datetime));
+        const metaRow = document.createElement("div");
+        metaRow.className = "reminder-card-meta-row";
 
         const repeatMap = {
           once: "Once",
@@ -425,21 +514,62 @@
 
         const leadLabel =
           rem.remind_before_minutes === 0
-            ? "At exact time"
+            ? "At time"
             : `${rem.remind_before_minutes} min before`;
 
-        meta.textContent = `${dtLabel} · ${repeatMap[rem.repeat]} · ${leadLabel}`;
+        const metaLeft = document.createElement("span");
+        metaLeft.textContent = `${repeatMap[rem.repeat] || "Once"} · ${leadLabel}`;
+
+        const timeLabel = new Date(rem.datetime).toLocaleTimeString(undefined, {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+
+        const metaRight = document.createElement("span");
+        metaRight.textContent = timeLabel;
+
+        metaRow.appendChild(metaLeft);
+        metaRow.appendChild(metaRight);
 
         main.appendChild(titleRow);
-        main.appendChild(meta);
+        main.appendChild(metaRow);
 
-        const del = document.createElement("button");
-        del.className = "reminder-card-delete";
-        del.textContent = "×";
-        del.onclick = () => deleteReminder(rem.id);
+        if (rem.note) {
+          const noteEl = document.createElement("div");
+          noteEl.className = "reminder-card-note";
+          noteEl.textContent = rem.note;
+          main.appendChild(noteEl);
+        }
+
+        // actions column
+        const actions = document.createElement("div");
+        actions.className = "reminder-card-actions";
+
+        const editBtn = document.createElement("button");
+        editBtn.className = "reminder-card-edit";
+        editBtn.innerHTML = "✎";
+        editBtn.title = "Edit";
+        editBtn.onclick = (e) => {
+          e.stopPropagation();
+          startEditReminder(rem.id);
+        };
+
+        const delBtn = document.createElement("button");
+        delBtn.className = "reminder-card-delete";
+        delBtn.textContent = "×";
+        delBtn.title = "Delete";
+        delBtn.onclick = (e) => {
+          e.stopPropagation();
+          handleDeleteClick(rem.id, li, delBtn);
+        };
+
+        actions.appendChild(editBtn);
+        actions.appendChild(delBtn);
 
         li.appendChild(main);
-        li.appendChild(del);
+        li.appendChild(actions);
+
+        // edit ONLY via edit icon now (no card-wide click)
         remindersListEl.appendChild(li);
       });
   }
@@ -447,90 +577,195 @@
   function deleteReminder(id) {
     reminders = reminders.filter((r) => r.id !== id);
     saveRemindersToStorage();
+    renderCalendar();
     renderReminders();
   }
 
-  /* -------------------------------------
-     MODAL FUNCTIONS
-  ------------------------------------- */
+  /* CALENDAR */
 
-  function openCategoryModal() {
-    categoryModal.classList.add("modal--open");
-    categoryModalInput.value = "";
-    setTimeout(() => categoryModalInput.focus(), 50);
+  function sameDay(a, b) {
+    return (
+      a.getFullYear() === b.getFullYear() &&
+      a.getMonth() === b.getMonth() &&
+      a.getDate() === b.getDate()
+    );
   }
 
-  function closeCategoryModal() {
-    categoryModal.classList.remove("modal--open");
+  function getRemindersForDay(date) {
+    const filter = filterCategorySelect.value || "";
+    return reminders.filter((r) => {
+      const rd = new Date(r.datetime);
+      if (!sameDay(rd, date)) return false;
+      if (
+        filter &&
+        (r.category || "").toLowerCase() !== filter.toLowerCase()
+      ) {
+        return false;
+      }
+      return true;
+    });
   }
 
-  function handleCategoryModalSave() {
-    const name = categoryModalInput.value.trim();
-    if (!name) {
-      categoryModalInput.focus();
-      return;
+  function renderCalendar() {
+    if (currentMonth == null || currentYear == null) return;
+
+    const monthName = new Date(currentYear, currentMonth, 1).toLocaleString(
+      undefined,
+      {
+        month: "long",
+        year: "numeric",
+      }
+    );
+
+    calendarMonthLabel.textContent = monthName;
+    selectedDateLabel.textContent = selectedDate
+      ? selectedDate.toLocaleDateString(undefined, {
+          weekday: "short",
+          month: "short",
+          day: "numeric",
+        })
+      : "";
+
+    calendarGrid.innerHTML = "";
+
+    const firstDay = new Date(currentYear, currentMonth, 1);
+    const firstWeekday = (firstDay.getDay() + 6) % 7; // convert Sun=0 -> Mon=0
+    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+    const today = new Date();
+
+    // leading blanks
+    for (let i = 0; i < firstWeekday; i++) {
+      const cell = document.createElement("button");
+      cell.className = "calendar-cell calendar-cell--empty";
+      cell.disabled = true;
+      calendarGrid.appendChild(cell);
     }
-    addCategory(name);
-    closeCategoryModal();
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const cellDate = new Date(currentYear, currentMonth, day);
+      const cell = document.createElement("button");
+      cell.className = "calendar-cell";
+      cell.textContent = day;
+
+      if (sameDay(cellDate, today)) {
+        cell.classList.add("calendar-cell--today");
+      }
+      if (selectedDate && sameDay(cellDate, selectedDate)) {
+        cell.classList.add("calendar-cell--selected");
+      }
+
+      const dayReminders = getRemindersForDay(cellDate);
+      if (dayReminders.length > 0) {
+        cell.classList.add("calendar-cell--has-reminders");
+      }
+
+      cell.addEventListener("click", () => {
+        selectedDate = cellDate;
+        renderCalendar();
+        renderReminders();
+      });
+
+      calendarGrid.appendChild(cell);
+    }
   }
 
-  /* -------------------------------------
-     SAVE HANDLER
-  ------------------------------------- */
+  /* SAVE HANDLER */
 
   function handleSave() {
     const payload = validateAndBuildPayload();
     if (!payload) return;
 
-    reminders.push({
-      id: payload.id,
-      title: payload.title,
-      datetime: payload.datetime,
-      repeat: payload.repeat,
-      priority: payload.priority,
-      category: payload.category,
-      remind_before_minutes: payload.remind_before_minutes,
-    });
+    const existingIndex = reminders.findIndex((r) => r.id === payload.id);
+    const wasEditing = existingIndex !== -1;
+
+    if (existingIndex === -1) {
+      reminders.push(payload);
+    } else {
+      reminders.splice(existingIndex, 1, {
+        ...reminders[existingIndex],
+        title: payload.title,
+        datetime: payload.datetime,
+        repeat: payload.repeat,
+        category: payload.category,
+        note: payload.note,
+        remind_before_minutes: payload.remind_before_minutes,
+      });
+    }
 
     saveRemindersToStorage();
+    renderCalendar();
     renderReminders();
+    setSaveMode("new");
+
+    if (wasEditing) {
+      resetFormToDefaults();
+    }
 
     if (hasTelegram) {
-      tg.sendData(JSON.stringify(payload));
-      tg.showPopup({
-        title: "Reminder saved",
-        message: "I’ll remind you at the time you chose.",
-        buttons: [{ id: "ok", type: "ok" }],
-      });
-      setTimeout(() => tg.close(), 400);
-    } else {
-      alert("Reminder created (browser mode). Check console.");
-      console.log("Payload:", payload);
+      tg.HapticFeedback.impactOccurred("medium");
     }
   }
 
-  /* -------------------------------------
-     TABS SWITCHING
-  ------------------------------------- */
+  /* EDIT EXISTING REMINDER */
 
-  function switchTab(name) {
-    tabs.forEach((t) => t.classList.toggle("tab--active", t.dataset.tab === name));
-    views.forEach((v) => v.classList.toggle("view--active", v.id === `view-${name}`));
+  function startEditReminder(id) {
+    const rem = reminders.find((r) => r.id === id);
+    if (!rem) return;
+
+    currentEditId = rem.id;
+
+    titleInput.value = rem.title;
+    noteInput.value = rem.note || "";
+
+    const dt = new Date(rem.datetime);
+    applyDateTimeToInputs(dt);
+
+    repeatHidden.value = rem.repeat;
+    repeatSelect.value = rem.repeat;
+
+    categoryHidden.value = rem.category || "";
+    categorySelect.value = rem.category || "";
+
+    leadHidden.value = String(rem.remind_before_minutes || 0);
+    leadChips.forEach((c) => {
+      if (c.dataset.value === String(rem.remind_before_minutes || 0)) {
+        c.classList.add("chip--active");
+      } else {
+        c.classList.remove("chip--active");
+      }
+    });
+
+    updatePreview();
+    setSaveMode("edit");
+    switchTab("create");
   }
 
-  /* -------------------------------------
-     EVENT BINDING
-  ------------------------------------- */
+  /* SIMPLE TAB SWITCH */
+
+  function switchTab(name) {
+    tabs.forEach((t) =>
+      t.classList.toggle("tab--active", t.dataset.tab === name)
+    );
+    views.forEach((v) =>
+      v.classList.toggle("view--active", v.id === `view-${name}`)
+    );
+  }
+
+  /* EVENTS */
 
   function bindEvents() {
     titleInput.addEventListener("input", updatePreview);
     dateInput.addEventListener("change", updatePreview);
     timeInput.addEventListener("change", updatePreview);
-    leadCustomInput.addEventListener("input", updatePreview);
+    noteInput.addEventListener("input", () => {});
 
-    setupChipGroup(repeatChips, repeatHidden);
-    setupChipGroup(priorityChips, priorityHidden);
-    setupChipGroup(leadChips, leadHidden, leadChipHandler);
+    repeatSelect.addEventListener("change", () => {
+      repeatHidden.value = repeatSelect.value;
+      updatePreview();
+    });
+
+    setupLeadChips();
 
     categorySelect.addEventListener("change", () => {
       categoryHidden.value = categorySelect.value;
@@ -550,26 +785,69 @@
       if (e.target === categoryModal) closeCategoryModal();
     });
 
-    filterCategorySelect.addEventListener("change", renderReminders);
+    filterCategorySelect.addEventListener("change", () => {
+      renderCalendar();
+      renderReminders();
+    });
 
     tabs.forEach((tab) => {
-      tab.addEventListener("click", () => switchTab(tab.dataset.tab));
+      tab.addEventListener("click", () => {
+        const target = tab.dataset.tab;
+
+        if (target === "create") {
+          // Only reset if we are NOT editing an existing reminder
+          if (!currentEditId) {
+            setSaveMode("new");
+            resetFormToDefaults();
+          }
+        }
+
+        switchTab(target);
+      });
     });
 
     saveBtn.addEventListener("click", handleSave);
+    cancelEditBtn.addEventListener("click", cancelEdit);
+
+    calPrevBtn.addEventListener("click", () => {
+      currentMonth--;
+      if (currentMonth < 0) {
+        currentMonth = 11;
+        currentYear--;
+      }
+      renderCalendar();
+      renderReminders();
+    });
+
+    calNextBtn.addEventListener("click", () => {
+      currentMonth++;
+      if (currentMonth > 11) {
+        currentMonth = 0;
+        currentYear++;
+      }
+      renderCalendar();
+      renderReminders();
+    });
   }
 
-  /* -------------------------------------
-     MAIN INIT
-  ------------------------------------- */
+  /* INIT */
 
   function init() {
-    setGreeting();
-    setDefaultDateTime();
+    const today = new Date();
+    currentMonth = today.getMonth();
+    currentYear = today.getFullYear();
+    selectedDate = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate()
+    );
+
     loadCategories();
     loadRemindersFromStorage();
     bindEvents();
-    updatePreview();
+    setSaveMode("new");
+    resetFormToDefaults();
+    renderCalendar();
     renderReminders();
   }
 
