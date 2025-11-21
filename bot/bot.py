@@ -25,6 +25,7 @@ from db import (
     init_db,
     add_reminder,
     get_reminder,
+    list_reminders_for_chat,
     update_reminder_status,
     update_reminder_datetime,
     get_upcoming_reminders_for_chat,
@@ -42,10 +43,12 @@ if not WEB_APP_URL:
     raise RuntimeError("WEB_APP_URL is not set. Add it to your .env file.")
 
 
-# ---------- Helpers ----------
+# ---------- Time helpers ----------
+
 
 def parse_client_datetime_to_utc(datetime_str: str, timezone_name: str | None) -> datetime.datetime:
     """
+    OLD FORMAT SUPPORT:
     datetime_str: 'YYYY-MM-DDTHH:MM' in user's local timezone
     timezone_name: IANA tz string like 'America/Toronto'
     Returns an aware UTC datetime.
@@ -56,10 +59,10 @@ def parse_client_datetime_to_utc(datetime_str: str, timezone_name: str | None) -
             tz = ZoneInfo(timezone_name)
             aware_local = naive_local.replace(tzinfo=tz)
         except Exception:
-            # fallback: treat as server local
-            aware_local = naive_local.astimezone(datetime.timezone.utc)
+            # fallback: treat as server local -> UTC
+            aware_local = naive_local.replace(tzinfo=datetime.timezone.utc)
     else:
-        aware_local = naive_local.astimezone(datetime.timezone.utc)
+        aware_local = naive_local.replace(tzinfo=datetime.timezone.utc)
 
     utc_dt = aware_local.astimezone(datetime.timezone.utc)
     return utc_dt
@@ -81,40 +84,33 @@ def format_for_user(reminder: dict) -> str:
         local_dt = utc_dt
 
     time_str = local_dt.strftime("%Y-%m-%d %H:%M")
-    pieces = [f"{time_str}"]
+    repeat = reminder.get("repeat", "none")
+    repeat_label = {
+        "none": "one-time",
+        "daily": "every day",
+        "weekly": "every week",
+    }.get(repeat, repeat)
 
-    cat = reminder.get("category")
-    if cat:
-        pieces.append(f"[{cat}]")
+    priority = reminder.get("priority", "normal")
+    priority_label = {
+        "low": "low",
+        "normal": "normal",
+        "urgent": "urgent",
+    }.get(priority, priority)
 
-    pieces.append(reminder.get("title", "Reminder"))
-    pieces.append(f"({reminder.get('priority', 'normal')})")
+    cat = reminder.get("category") or "No category"
 
-    return " ".join(pieces)
-
-from telegram.ext import JobQueue  # add this to the imports at top with others
-
-def schedule_job_for_reminder(reminder: dict, job_queue: JobQueue):
-    utc_dt = datetime.datetime.fromisoformat(reminder["datetime_utc"]).replace(
-        tzinfo=datetime.timezone.utc
-    )
-    now_utc = datetime.datetime.now(datetime.timezone.utc)
-    delay = (utc_dt - now_utc).total_seconds()
-    if delay <= 0:
-        return
-
-    reminder_id = reminder["id"]
-    chat_id = reminder["chat_id"]
-
-    job_queue.run_once(
-        send_reminder_job,
-        when=delay,
-        chat_id=chat_id,
-        data={"reminder_id": reminder_id},
-        name=f"reminder-{reminder_id}",
+    return (
+        f"*{reminder['title']}*\n"
+        f"🕒 {time_str}\n"
+        f"🔁 {repeat_label}\n"
+        f"⚙️ Priority: {priority_label}\n"
+        f"🏷 Category: {cat}"
     )
 
-# ---------- Command Handlers ----------
+
+# ---------- Commands ----------
+
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     button = KeyboardButton(
@@ -124,15 +120,16 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     keyboard = ReplyKeyboardMarkup([[button]], resize_keyboard=True)
 
     await update.message.reply_text(
-        "Hi! I’m your reminder assistant.\n\n"
-        "Tap the button below to open the reminder app, or use /reminders to see upcoming reminders.",
+        "Hi! This is NAiss REM.\n\n"
+        "Tap the button below to open the reminder mini-app.",
         reply_markup=keyboard,
     )
 
 
 async def reminders_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """List upcoming reminders for this chat."""
     chat_id = update.effective_chat.id
-    reminders = get_upcoming_reminders_for_chat(chat_id, limit=10)
+    reminders = get_upcoming_reminders_for_chat(chat_id)
 
     if not reminders:
         await update.message.reply_text("You have no upcoming reminders.")
@@ -140,16 +137,18 @@ async def reminders_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
     lines = []
     for r in reminders:
-        line = f"#{r['id']} • {format_for_user(r)} • repeat={r['repeat']}"
-        lines.append(line)
+        status = r["status"]
+        prefix = "⏰" if status == "pending" else "✅"
+        lines.append(f"{prefix} #{r['id']}: {format_for_user(r)}")
 
-    msg = "Your upcoming reminders:\n\n" + "\n".join(lines)
-    await update.message.reply_text(msg)
+    await update.message.reply_text("\n\n".join(lines), parse_mode="Markdown")
 
 
-# ---------- WebApp data handler ----------
+# ---------- WebApp data handler (FIXED) ----------
+
 
 async def webapp_data_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle data coming from the WebApp (mini app)."""
     if not update.message or not update.message.web_app_data:
         return
 
@@ -162,21 +161,64 @@ async def webapp_data_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
         await update.message.reply_text("❌ Could not parse reminder data.")
         return
 
-    title = data.get("title", "Reminder")
-    datetime_str = data.get("datetime")  # "YYYY-MM-DDTHH:MM"
+    title = (data.get("title") or "Reminder").strip()
+    datetime_str = data.get("datetime")  # From WebApp: ISO string from toISOString()
+    timezone_name = data.get("timezone")
     priority = data.get("priority", "normal")
     category = data.get("category") or None
-    repeat = data.get("repeat", "none")  # none / daily / weekly
-    timezone_name = data.get("timezone")  # IANA string
+
+    # Map WebApp repeat values to DB repeat values
+    web_repeat = (data.get("repeat") or "once").lower()
+    repeat_map = {
+        "once": "none",   # one-time reminder
+        "none": "none",
+        "daily": "daily",
+        "weekly": "weekly",
+        # monthly/yearly not supported in DB yet – treat as one-time
+        "monthly": "none",
+        "yearly": "none",
+    }
+    repeat = repeat_map.get(web_repeat, "none")
+
+    # Lead time from WebApp (minutes before event)
+    remind_before_minutes = int(data.get("remind_before_minutes", 0) or 0)
 
     if not datetime_str:
         await update.message.reply_text("❌ No date/time provided.")
         return
 
     try:
-        utc_dt = parse_client_datetime_to_utc(datetime_str, timezone_name)
+        # New client sends full ISO (e.g. 2025-11-19T20:48:00.000Z).
+        # Try to parse it as UTC-aware datetime.
+        iso_candidate = datetime_str
+        if iso_candidate.endswith("Z"):
+            iso_candidate = iso_candidate.replace("Z", "+00:00")
+
+        utc_dt = None
+        try:
+            dt_parsed = datetime.datetime.fromisoformat(iso_candidate)
+            if dt_parsed.tzinfo is None:
+                # If no tzinfo, attach user's timezone if we know it, else UTC
+                if timezone_name:
+                    try:
+                        tz = ZoneInfo(timezone_name)
+                        dt_parsed = dt_parsed.replace(tzinfo=tz)
+                    except Exception:
+                        dt_parsed = dt_parsed.replace(tzinfo=datetime.timezone.utc)
+                else:
+                    dt_parsed = dt_parsed.replace(tzinfo=datetime.timezone.utc)
+            utc_dt = dt_parsed.astimezone(datetime.timezone.utc)
+        except Exception:
+            # Fallback to old format 'YYYY-MM-DDTHH:MM' in local time
+            utc_dt = parse_client_datetime_to_utc(datetime_str[:16], timezone_name)
+
         now_utc = datetime.datetime.now(datetime.timezone.utc)
-        delay_seconds = (utc_dt - now_utc).total_seconds()
+
+        # Schedule notification at (event time - lead minutes)
+        utc_dt_for_notification = utc_dt - datetime.timedelta(
+            minutes=remind_before_minutes
+        )
+        delay_seconds = (utc_dt_for_notification - now_utc).total_seconds()
         if delay_seconds <= 0:
             await update.message.reply_text("⏰ Time must be in the future.")
             return
@@ -184,7 +226,8 @@ async def webapp_data_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
         await update.message.reply_text("❌ Invalid date/time format.")
         return
 
-    # Store in DB
+    # Store in DB – we keep the actual event time in datetime_utc,
+    # not the lead-time moment.
     reminder_id = add_reminder(
         chat_id=chat_id,
         title=title,
@@ -212,6 +255,7 @@ async def webapp_data_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 # ---------- Job: send reminder ----------
 
+
 async def send_reminder_job(context: ContextTypes.DEFAULT_TYPE) -> None:
     job = context.job
     reminder_id = job.data["reminder_id"]
@@ -228,10 +272,10 @@ async def send_reminder_job(context: ContextTypes.DEFAULT_TYPE) -> None:
         [
             [
                 InlineKeyboardButton("Snooze 10 min", callback_data=f"snooze10:{reminder_id}"),
-                InlineKeyboardButton("Snooze 1 hour", callback_data=f"snooze60:{reminder_id}"),
+                InlineKeyboardButton("Snooze 1 h", callback_data=f"snooze60:{reminder_id}"),
             ],
             [
-                InlineKeyboardButton("Mark done / cancel", callback_data=f"cancel:{reminder_id}")
+                InlineKeyboardButton("Mark as done", callback_data=f"cancel:{reminder_id}"),
             ],
         ]
     )
@@ -273,8 +317,8 @@ async def send_reminder_job(context: ContextTypes.DEFAULT_TYPE) -> None:
         schedule_job_for_reminder(get_reminder(reminder_id), context.job_queue)
 
 
-
 # ---------- Callback: Snooze / Cancel ----------
+
 
 async def reminder_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
@@ -285,46 +329,64 @@ async def reminder_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         action, rid_str = data.split(":")
         reminder_id = int(rid_str)
     except Exception:
-        await query.edit_message_reply_markup(reply_markup=None)
+        await query.edit_message_text("❌ Invalid action.")
         return
 
     reminder = get_reminder(reminder_id)
-    if not reminder or reminder["status"] != "pending":
-        await query.edit_message_text("This reminder is already done or cancelled.")
+    if not reminder:
+        await query.edit_message_text("This reminder no longer exists.")
         return
 
-    # cancel old job(s)
-    jobs = context.job_queue.get_jobs_by_name(f"reminder-{reminder_id}")
-    for j in jobs:
-        j.schedule_removal()
+    if action == "cancel":
+        update_reminder_status(reminder_id, "done")
+        await query.edit_message_text("✅ Reminder marked as done.")
+        return
 
-    if action.startswith("snooze"):
-        now_utc = datetime.datetime.now(datetime.timezone.utc)
-        if action == "snooze10":
-            new_dt = now_utc + datetime.timedelta(minutes=10)
-        else:
-            new_dt = now_utc + datetime.timedelta(hours=1)
+    # snooze
+    minutes = 10 if action == "snooze10" else 60
+    utc_dt = datetime.datetime.fromisoformat(reminder["datetime_utc"]).replace(
+        tzinfo=datetime.timezone.utc
+    )
+    new_dt = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=minutes)
+    update_reminder_datetime(reminder_id, new_dt.isoformat())
 
-        update_reminder_datetime(reminder_id, new_dt.isoformat())
-        schedule_job_for_reminder(get_reminder(reminder_id), context.job_queue)
+    # schedule new job
+    schedule_job_for_reminder(get_reminder(reminder_id), context.job_queue)
 
-
-        await query.edit_message_text(
-            f"🔁 Reminder #{reminder_id} snoozed.\nNext time: {format_for_user(get_reminder(reminder_id))}"
-        )
-
-    elif action == "cancel":
-        update_reminder_status(reminder_id, "cancelled")
-        await query.edit_message_text(f"✅ Reminder #{reminder_id} marked as done / cancelled.")
+    await query.edit_message_text(f"⏰ Reminder snoozed for {minutes} minutes.")
 
 
-# ---------- App bootstrap ----------
+# ---------- Scheduling helper ----------
+
+
+def schedule_job_for_reminder(reminder: dict, job_queue) -> None:
+    """Schedule a job for a reminder (used on startup & for repeats)."""
+    utc_dt = datetime.datetime.fromisoformat(reminder["datetime_utc"]).replace(
+        tzinfo=datetime.timezone.utc
+    )
+    now_utc = datetime.datetime.now(datetime.timezone.utc)
+    delay_seconds = (utc_dt - now_utc).total_seconds()
+    if delay_seconds <= 0:
+        return
+
+    job_queue.run_once(
+        send_reminder_job,
+        when=delay_seconds,
+        chat_id=reminder["chat_id"],
+        data={"reminder_id": reminder["id"]},
+        name=f"reminder-{reminder['id']}",
+    )
+
 
 async def on_startup(app: Application) -> None:
+    """On startup, schedule jobs for all pending reminders in the future."""
     print("Scheduling pending reminders from DB...")
-    for r in get_all_pending_reminders():
+    pending = get_all_pending_reminders()
+    for r in pending:
         schedule_job_for_reminder(r, app.job_queue)
-    print("Done scheduling pending reminders.")
+
+
+# ---------- Main ----------
 
 
 def main() -> None:
